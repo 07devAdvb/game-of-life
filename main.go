@@ -6,7 +6,7 @@ import (
 	"math/rand"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 const (
@@ -51,7 +51,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	for y := 0; y < gridHeight; y++ {
 		for x := 0; x < gridWidth; x++ {
 			if g.Cells[y][x] {
-				ebitenutil.DrawRect(screen, float64(x*cellSize), float64(y*cellSize), cellSize, cellSize, color.White)
+				vector.DrawFilledRect(screen, float32(x*cellSize), float32(y*cellSize), float32(cellSize), float32(cellSize), color.White, false)
 			}
 		}
 	}
