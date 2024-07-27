@@ -6,108 +6,87 @@ import (
 	"math/rand"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
 const (
-	screenWidth  = 640
-	screenHeight = 480
+	screenWidth  = 1000
+	screenHeight = 1000
+	cellSize     = 10
+	gridWidth    = screenWidth / cellSize
+	gridHeight   = screenHeight / cellSize
 )
 
 type Game struct {
-	Width  int
-	Height int
-	Cells  [][]Cell
+	Cells     [][]bool
+	TempCells [][]bool
 }
 
-func (g *Game) Initialize() {
-	for i := 0; i < g.Height; i++ {
-		g.Cells[i] = make([]Cell, g.Width)
-		for j := 0; j < g.Width; j++ {
-			g.Cells[i][j] = Cell{
-				x:     j,
-				y:     i,
-				alive: rand.Intn(2) == 0,
-				game:  g,
-			}
+func NewGame() *Game {
+	g := &Game{
+		Cells:     make([][]bool, gridHeight),
+		TempCells: make([][]bool, gridHeight),
+	}
+	for i := range g.Cells {
+		g.Cells[i] = make([]bool, gridWidth)
+		g.TempCells[i] = make([]bool, gridWidth)
+		for j := range g.Cells[i] {
+			g.Cells[i][j] = rand.Intn(2) == 0
 		}
 	}
+	return g
 }
 
 func (g *Game) Update() error {
-	newCells := make([][]Cell, g.Height)
-	for i := range newCells {
-		newCells[i] = make([]Cell, g.Width)
-	}
-	for i := 0; i < g.Height; i++ {
-		for j := 0; j < g.Width; j++ {
-			newCells[i][j] = g.Cells[i][j]
-			newCells[i][j].Update()
+	for y := 0; y < gridHeight; y++ {
+		for x := 0; x < gridWidth; x++ {
+			count := g.countNeighbors(x, y)
+			g.TempCells[y][x] = (count == 3) || (count == 2 && g.Cells[y][x])
 		}
 	}
-	g.Cells = newCells
+	g.Cells, g.TempCells = g.TempCells, g.Cells
 	return nil
 }
 func (g *Game) Draw(screen *ebiten.Image) {
-	screen.Fill(color.RGBA{0, 0, 0, 255})
-	for i := 0; i < g.Height; i++ {
-		for j := 0; j < g.Width; j++ {
-			if g.Cells[i][j].alive {
-				screen.Set(j, i, color.RGBA{255, 255, 255, 255})
+	for y := 0; y < gridHeight; y++ {
+		for x := 0; x < gridWidth; x++ {
+			if g.Cells[y][x] {
+				ebitenutil.DrawRect(screen, float64(x*cellSize), float64(y*cellSize), cellSize, cellSize, color.White)
 			}
 		}
 	}
 }
 
-func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
-	screenWidth = g.Width
-	screenHeight = g.Height
+func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 	return screenWidth, screenHeight
 }
 
-type Cell struct {
-	x, y  int
-	alive bool
-	game  *Game
-}
-
-func (c *Cell) Update() {
-	c.alive = c.CheckNeighbors()
-}
-
-func (c *Cell) CheckNeighbors() bool {
+func (g *Game) countNeighbors(x, y int) int {
 	count := 0
 	for i := -1; i <= 1; i++ {
 		for j := -1; j <= 1; j++ {
 			if i == 0 && j == 0 {
 				continue
 			}
-			x := (c.x + j + c.game.Width) % c.game.Width
-			y := (c.y + i + c.game.Height) % c.game.Height
-			if c.game.Cells[y][x].alive {
+			x2 := (x + j + gridWidth) % gridWidth
+			y2 := (y + i + gridHeight) % gridHeight
+			if g.Cells[y2][x2] {
 				count++
 			}
 		}
 	}
-
-	if c.alive {
-		return count == 2 || count == 3
-	}
-	return count == 3
+	return count
 }
 
 func main() {
-	ebiten.SetWindowTitle("Game of Life")
 	ebiten.SetWindowSize(screenWidth, screenHeight)
+	ebiten.SetWindowTitle("Game of Life")
 
-	g := &Game{
-		Width:  screenWidth,
-		Height: screenHeight,
-		Cells:  make([][]Cell, screenHeight),
-	}
-	g.Initialize()
+	g := NewGame()
 
-	err := ebiten.RunGame(g)
-	if err != nil {
+	ebiten.SetTPS(10)
+
+	if err := ebiten.RunGame(g); err != nil {
 		log.Fatal(err)
 	}
 }
