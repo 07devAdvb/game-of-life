@@ -52,8 +52,6 @@ func (g *Game) InitializeOnEdit() {
 	g.state = "edit"
 }
 
-// TODO: Initialize with a custom world
-
 // Starts the game at menu state
 func NewGame() *Game {
 	g := &Game{
