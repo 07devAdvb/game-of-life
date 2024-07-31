@@ -25,12 +25,12 @@ type Menu struct {
 type Game struct {
 	Cells     [][]bool
 	NextCells [][]bool
-	state     string
+	state     string // menu, edit, playing
 	menu      Menu
 }
 
 // Initialize each cell of each row to a random state
-func (g *Game) Initialize() {
+func (g *Game) InitializeOnRandom() {
 	for i := range g.Cells {
 		g.Cells[i] = make([]bool, (screenWidth / g.menu.CellSize))
 		g.NextCells[i] = make([]bool, (screenWidth / g.menu.CellSize))
@@ -38,6 +38,18 @@ func (g *Game) Initialize() {
 			g.Cells[i][j] = rand.Intn(2) == 0
 		}
 	}
+	g.state = "playing"
+}
+
+// Initialize each cell of each row dead
+func (g *Game) InitializeOnEdit() {
+	g.Cells = make([][]bool, screenHeight/g.menu.CellSize)
+	g.NextCells = make([][]bool, screenHeight/g.menu.CellSize)
+	for i := range g.Cells {
+		g.Cells[i] = make([]bool, screenWidth/g.menu.CellSize)
+		g.NextCells[i] = make([]bool, screenWidth/g.menu.CellSize)
+	}
+	g.state = "edit"
 }
 
 // TODO: Initialize with a custom world
@@ -63,9 +75,12 @@ func (g *Game) Update() error {
 	if g.state == "menu" {
 		// If the user presses Enter, start the game
 		if ebiten.IsKeyPressed(ebiten.KeyEnter) {
-			g.state = "playing"
 			if g.menu.RandomWorld {
-				g.Initialize()
+				g.state = "playing"
+				g.InitializeOnRandom()
+			} else {
+				g.state = "edit"
+				g.InitializeOnEdit()
 			}
 		}
 		// If the user presses R, toggle random world
@@ -88,7 +103,20 @@ func (g *Game) Update() error {
 				g.menu.CellSize = 20
 			}
 		}
-	} else {
+	} else if g.state == "edit" {
+		// If the user presses the left mouse button, toggle the cell state
+		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+			x, y := ebiten.CursorPosition()
+			cellX, cellY := x/g.menu.CellSize, y/g.menu.CellSize
+			if cellX >= 0 && cellX < len(g.Cells[0]) && cellY >= 0 && cellY < len(g.Cells) {
+				g.Cells[cellY][cellX] = !g.Cells[cellY][cellX] // Toggle cell state
+			}
+		}
+		// Press Enter to start the game
+		if ebiten.IsKeyPressed(ebiten.KeyEnter) {
+			g.state = "playing"
+		}
+	} else if g.state == "playing" {
 		for y := 0; y < (screenHeight / g.menu.CellSize); y++ {
 			for x := 0; x < (screenWidth / g.menu.CellSize); x++ {
 				count := g.countNeighbors(x, y)
@@ -116,7 +144,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		text.Draw(screen, "- Press Enter to start", basicfont.Face7x13, 450, 330, color.White)
 		text.Draw(screen, "- Press R to toggle random world", basicfont.Face7x13, 450, 350, color.White)
 		text.Draw(screen, "- Press Up/Down arrows to change cell size", basicfont.Face7x13, 450, 370, color.White)
-	} else {
+		// Display the state of the cells either in playing mode or in edit mode
+	} else if g.state == "edit" || g.state == "playing" {
 		for y := 0; y < (screenHeight / g.menu.CellSize); y++ {
 			for x := 0; x < (screenWidth / g.menu.CellSize); x++ {
 				// If the cell is alive, draw a white square
@@ -131,6 +160,10 @@ func (g *Game) Draw(screen *ebiten.Image) {
 				}
 			}
 		}
+	}
+	// Display the current state of editing mode
+	if g.state == "edit" {
+		text.Draw(screen, "Editing Mode - Click to toggle cells, Press Enter to start", basicfont.Face7x13, 10, 20, color.White)
 	}
 }
 
