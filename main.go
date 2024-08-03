@@ -15,6 +15,10 @@ import (
 const (
 	screenWidth  = 1200
 	screenHeight = 600
+
+	EDIT_MODE = "edit"
+	PLAY_MODE = "playing"
+	MENU_MODE = "menu"
 )
 
 type Menu struct {
@@ -38,7 +42,7 @@ func (g *Game) InitializeOnRandom() {
 			g.Cells[i][j] = rand.Intn(2) == 0
 		}
 	}
-	g.state = "playing"
+	g.state = PLAY_MODE
 }
 
 // Initialize each cell of each row dead
@@ -49,7 +53,7 @@ func (g *Game) InitializeOnEdit() {
 		g.Cells[i] = make([]bool, screenWidth/g.menu.CellSize)
 		g.NextCells[i] = make([]bool, screenWidth/g.menu.CellSize)
 	}
-	g.state = "edit"
+	g.state = EDIT_MODE
 }
 
 // Starts the game at menu state
@@ -61,7 +65,7 @@ func NewGame() *Game {
 			CellSize:    10,
 			RandomWorld: true,
 		},
-		state: "menu",
+		state: MENU_MODE,
 		// Default settings first
 	}
 	// Return the empty game
@@ -70,14 +74,14 @@ func NewGame() *Game {
 
 // Traverse each cell and update its state based on its neighbors
 func (g *Game) Update() error {
-	if g.state == "menu" {
+	if g.state == MENU_MODE {
 		// If the user presses Enter, start the game
 		if ebiten.IsKeyPressed(ebiten.KeyEnter) {
 			if g.menu.RandomWorld {
-				g.state = "playing"
+				g.state = PLAY_MODE
 				g.InitializeOnRandom()
 			} else {
-				g.state = "edit"
+				g.state = EDIT_MODE
 				g.InitializeOnEdit()
 			}
 		}
@@ -101,7 +105,7 @@ func (g *Game) Update() error {
 				g.menu.CellSize = 20
 			}
 		}
-	} else if g.state == "edit" {
+	} else if g.state == EDIT_MODE {
 		// If the user presses the left mouse button, toggle the cell state
 		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 			x, y := ebiten.CursorPosition()
@@ -112,9 +116,9 @@ func (g *Game) Update() error {
 		}
 		// Press Enter to start the game
 		if ebiten.IsKeyPressed(ebiten.KeyEnter) {
-			g.state = "playing"
+			g.state = PLAY_MODE
 		}
-	} else if g.state == "playing" {
+	} else if g.state == PLAY_MODE {
 		for y := 0; y < (screenHeight / g.menu.CellSize); y++ {
 			for x := 0; x < (screenWidth / g.menu.CellSize); x++ {
 				count := g.countNeighbors(x, y)
@@ -129,7 +133,7 @@ func (g *Game) Update() error {
 // Draw the current state of the game with a white square size 10
 // The size of the  grid is the size of the screen divided by the size of a cell
 func (g *Game) Draw(screen *ebiten.Image) {
-	if g.state == "menu" {
+	if g.state == MENU_MODE {
 		// Title display
 		text.Draw(screen, "Game of Life", basicfont.Face7x13, 450, 150, color.White)
 		text.Draw(screen, "-----------------------", basicfont.Face7x13, 450, 166, color.White)
@@ -143,7 +147,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		text.Draw(screen, "- Press R to toggle random world", basicfont.Face7x13, 450, 350, color.White)
 		text.Draw(screen, "- Press Up/Down arrows to change cell size", basicfont.Face7x13, 450, 370, color.White)
 		// Display the state of the cells either in playing mode or in edit mode
-	} else if g.state == "edit" || g.state == "playing" {
+	} else if g.state == EDIT_MODE || g.state == PLAY_MODE {
 		for y := 0; y < (screenHeight / g.menu.CellSize); y++ {
 			for x := 0; x < (screenWidth / g.menu.CellSize); x++ {
 				// If the cell is alive, draw a white square
@@ -160,7 +164,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		}
 	}
 	// Display the current state of editing mode
-	if g.state == "edit" {
+	if g.state == EDIT_MODE {
 		text.Draw(screen, "Editing Mode - Click to toggle cells, Press Enter to start", basicfont.Face7x13, 10, 20, color.White)
 	}
 }
